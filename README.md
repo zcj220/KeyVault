@@ -23,33 +23,13 @@
 
 ## 另一台电脑怎么部署
 
-分两样东西，别混：
+请看详细说明：**[其他电脑安装.md](./其他电脑安装.md)**（含 Windows / Mac 一键脚本）。
 
-| 东西 | 放哪 | 作用 |
-|---|---|---|
-| **程序代码** | GitHub（可公开） | 安装 KeyVault / MCP / 界面 |
-| **记忆库密文** `vault.kvault` | OneDrive / 坚果云（私有同步） | 真正的密码数据 |
+一句话：
 
-**不要**把 `vault.kvault`、`keyvault.local.env`、带密码的 Excel 推到 GitHub。
-
-### 为什么坚果云是空的？
-
-当前库在本机 **OneDrive**：
-
-`C:\Users\37561\OneDrive\KeyVault\vault.kvault`（已有文件）
-
-网页坚果云里的 KeyVault 只是空文件夹；本机当时也没装坚果云客户端同步。  
-两台电脑若都登录同一 OneDrive，直接共用这个文件即可。  
-若改用坚果云：装客户端 → 把 `vault.kvault` 拷进同步目录 → 改 `KEYVAULT_PATH`。
-
-### 第二台电脑步骤
-
-1. `git clone https://github.com/zcj220/KeyVault.git`
-2. 建虚拟环境并安装（见上文）
-3. 等 OneDrive（或坚果云）把 `vault.kvault` 同步下来
-4. 复制 `keyvault.local.env.example` 为 `keyvault.local.env`，填路径和主密码
-5. 运行 `.\scripts\start-ui.ps1`，在界面点「接入 Cursor AI」
-6. Cursor → MCP 重载，看到 keyvault 绿灯
+1. **GitHub** 装程序（`install-windows.ps1` 或 `install-macos.sh`）  
+2. **OneDrive** 同步同一个 `vault.kvault`  
+3. 界面点「接入 Cursor AI」→ MCP 亮绿灯  
 
 ## 本地管理界面（你自己也能看、能改）
 
