@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KeyVault // 芯造记忆库</title>
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="bg-glow"></div>
+
+  <div id="gate" class="gate-wrap">
+    <div class="panel gate glass">
+      <div class="brand">
+        <div class="logo">KV</div>
+        <div>
+          <h1>芯造记忆库</h1>
+          <p class="tag">加密保险箱 · KeyVault</p>
+        </div>
+      </div>
+      <p class="muted" id="syncHint"></p>
+      <label>库文件路径</label>
+      <input id="vaultPath" type="text" />
+      <label>主密码</label>
+      <input id="masterPassword" type="password" placeholder="请输入主密码" />
+      <div class="row">
+        <button id="btnUnlock" class="primary">解锁进入</button>
+        <button id="btnInit" class="ghost">首次创建库</button>
+      </div>
+      <p id="gateError" class="error"></p>
+    </div>
+  </div>
+
+  <div id="app" class="hidden app-shell">
+    <header class="top glass">
+      <div class="brand mini">
+        <div class="logo sm">KV</div>
+        <div>
+          <strong>芯造记忆库</strong>
+          <div class="muted tiny" id="pathLabel"></div>
+        </div>
+      </div>
+      <div class="stats" id="statsBar"></div>
+      <div class="row">
+        <button id="btnMcp" class="ghost" title="把当前库接入 Cursor，让 AI 也能读写和提醒">接入 Cursor AI</button>
+        <button id="btnLock" class="ghost" title="退出并锁定，下次需重新输入主密码">锁定退出</button>
+      </div>
+    </header>
+
+    <section id="alertBar" class="alert-bar hidden"></section>
+
+    <section class="toolbar">
+      <input id="search" type="search" placeholder="搜索资产 / Token / 用途…" />
+      <select id="filterCategory"><option value="">全部分类</option></select>
+      <button id="btnNew" class="primary">+ 新建资产</button>
+      <button id="btnNewReminder" class="accent">+ 新建提醒</button>
+    </section>
+
+    <main class="layout">
+      <aside class="col">
+        <div class="panel-title">资产列表</div>
+        <div id="list" class="list glass"></div>
+      </aside>
+      <section class="col wide">
+        <div class="panel-title">详情</div>
+        <div id="detail" class="detail glass">
+          <p class="muted">选择左侧条目，或新建资产 / 提醒。</p>
+        </div>
+      </section>
+      <aside class="col">
+        <div class="panel-title">提醒待办 <span id="dueBadge" class="badge">0</span></div>
+        <div id="reminderPanel" class="reminders glass"></div>
+      </aside>
+    </main>
+  </div>
+
+  <dialog id="editDialog">
+    <form method="dialog" id="editForm" class="panel glass dlg">
+      <h2 id="editTitle">新建条目</h2>
+      <label>名称</label>
+      <input name="name" required placeholder="如 Cloudflare-域名解析" />
+      <label>分类</label>
+      <input name="category" list="catList" />
+      <datalist id="catList"></datalist>
+      <label>类型</label>
+      <input name="kind" placeholder="asset / account / server / note / api" />
+      <label>整体用途</label>
+      <textarea name="summary" rows="2"></textarea>
+      <label>过期日</label>
+      <input name="expires_at" type="date" />
+      <label>字段（每行：字段名 | 值 | 用途 | secret）</label>
+      <textarea name="fieldsText" rows="6" placeholder="账号 | a@b.com | 登录邮箱&#10;Token | xxx | API调用 | secret"></textarea>
+      <div class="row">
+        <button type="button" class="ghost" data-close-dialog="editDialog">取消</button>
+        <button class="primary" value="save" type="submit">保存</button>
+      </div>
+      <p id="editError" class="error"></p>
+    </form>
+  </dialog>
+
+  <dialog id="reminderDialog">
+    <form method="dialog" id="reminderForm" class="panel glass dlg">
+      <h2>新建提醒</h2>
+      <label>标题</label>
+      <input name="title" required placeholder="例如：续费 Cloudflare / 交社保" />
+      <label>下次到期日</label>
+      <input name="due_at" type="date" required />
+      <label>提醒周期</label>
+      <select name="repeat">
+        <option value="once" selected>仅一次</option>
+        <option value="weekly">每周（按到期日的星期几）</option>
+        <option value="monthly">每月（按到期日的几号）</option>
+        <option value="quarterly">每季度（每 3 个月同一天）</option>
+        <option value="yearly">每年（按月日）</option>
+      </select>
+      <label>提前几天提醒</label>
+      <input name="remind_before_days" type="number" value="3" min="0" max="90" />
+      <label>备注</label>
+      <textarea name="notes" rows="3" placeholder="到时候要做什么（可不填）"></textarea>
+      <div class="row">
+        <button type="button" class="ghost" data-close-dialog="reminderDialog">取消</button>
+        <button class="accent" value="save" type="submit">保存提醒</button>
+      </div>
+      <p id="reminderError" class="error"></p>
+    </form>
+  </dialog>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
