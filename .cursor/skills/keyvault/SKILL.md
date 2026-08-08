@@ -19,12 +19,30 @@ description: >-
 - 字段名可自由：Token / KEY / AccessKeyId…
 - 建议分类：企业基础、开放平台支付、国外网站、国内网站、服务器及数据库、域名DNS邮件、Whisperkin、杂记
 
-## 写入资产
+## 写入资产（改密码 / 同类别新增 —— 直接跟 AI 说即可）
 
-1. `search_entries` 防重复
-2. 新资产 → `add_entry`（fields_json）
-3. 补字段 → `upsert_field`
-4. 成功后不主动复述敏感明文
+用户说例如：
+
+- 「Cloudflare 密码改成 xxx，帮我更新进记忆库」
+- 「国外网站再加一条：xxx，账号密码是…」
+- 「把腾讯云那条的 SecretKey 换成新的」
+
+AI 应主动写入，不要只口头记下：
+
+1. 先 `search_entries` 看有没有同名/同类
+2. 已有 → `update_entry` / `upsert_field` / `update_credential`
+3. 没有 → `add_entry`（分类尽量与同类一致，如「国外网站」）
+4. 成功后只确认「已写入」，不主动复述完整密钥
+
+## 一键导出
+
+用户说「导出全部 / 按分类导出」时，调用 `export_vault`：
+
+- `format=md`：按分类 Markdown（默认可含明文）
+- `format=json`：按分类 JSON
+- `format=encrypted`：加密 `.kvault` 备份（最安全）
+
+文件会写到用户「下载」文件夹。
 
 ## 提醒（用户自己写或让 AI 写）
 

@@ -424,6 +424,52 @@ def delete_reminder(id_or_title: str) -> str:
         return _err(exc)
 
 
+@mcp.tool()
+def export_vault(
+    format: str = "md",
+    include_secret: bool = True,
+) -> str:
+    """按分类一键导出记忆库。format=md|json|encrypted；encrypted 导出到用户下载目录。"""
+    try:
+        from datetime import datetime
+        from pathlib import Path
+
+        from keyvault.export_util import build_classified_export, to_markdown
+
+        store = _store()
+        fmt = (format or "md").lower()
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        downloads = Path.home() / "Downloads"
+        downloads.mkdir(parents=True, exist_ok=True)
+
+        if fmt == "encrypted":
+            dest = downloads / f"keyvault-backup-{stamp}.kvault"
+            store.export_encrypted(dest)
+            return _ok({"ok": True, "format": "encrypted", "path": str(dest)})
+
+        payload = build_classified_export(store, include_secret=include_secret)
+        if fmt == "json":
+            dest = downloads / f"keyvault-分类导出-{stamp}.json"
+            dest.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        else:
+            dest = downloads / f"keyvault-分类导出-{stamp}.md"
+            dest.write_text(to_markdown(payload), encoding="utf-8")
+        return _ok(
+            {
+                "ok": True,
+                "format": fmt,
+                "path": str(dest),
+                "entry_count": payload.get("entry_count"),
+                "categories": list((payload.get("categories") or {}).keys()),
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        return _err(exc)
+
+
 def main() -> None:
     mcp.run(transport="stdio")
 

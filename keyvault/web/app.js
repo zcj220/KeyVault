@@ -442,6 +442,61 @@ document.querySelectorAll("[data-close-dialog]").forEach((btn) => {
     if (dlg?.open) dlg.close();
   });
 });
+$("btnExport").onclick = async () => {
+  const choice = prompt(
+    "导出方式：\n1 = 按分类 Markdown（含明文，推荐阅读）\n2 = 按分类 JSON（含明文）\n3 = 加密备份 .kvault（最安全，可导入恢复）\n4 = 按分类 Markdown（打码，不含明文）\n\n请输入 1/2/3/4",
+    "1"
+  );
+  if (!choice) return;
+  const map = {
+    "1": { format: "md", include_secret: true },
+    "2": { format: "json", include_secret: true },
+    "3": { format: "encrypted", include_secret: false },
+    "4": { format: "md", include_secret: false },
+  };
+  const opt = map[choice.trim()];
+  if (!opt) {
+    alert("请输入 1、2、3 或 4");
+    return;
+  }
+  if (opt.include_secret && opt.format !== "encrypted") {
+    if (!confirm("将导出含密码/Token 明文的文件到「下载」文件夹，确认继续？")) return;
+  }
+  try {
+    if (opt.format === "encrypted") {
+      const data = await api(
+        `/api/export?format=encrypted&include_secret=0`
+      );
+      alert(`已导出加密备份：\n${data.path}`);
+      return;
+    }
+    const qs = new URLSearchParams({
+      format: opt.format,
+      include_secret: opt.include_secret ? "1" : "0",
+    });
+    const res = await fetch(`/api/export?${qs}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `导出失败 ${res.status}`);
+    }
+    const blob = await res.blob();
+    const saved = res.headers.get("X-Saved-Path") || "";
+    const cd = res.headers.get("Content-Disposition") || "";
+    const m = /filename=\"([^\"]+)\"/.exec(cd);
+    const filename = m ? m[1] : `keyvault-export.${opt.format}`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    alert(
+      `已按分类导出。\n浏览器已开始下载。\n${saved ? "同时保存到：\n" + saved : ""}`
+    );
+  } catch (err) {
+    alert(err.message);
+  }
+};
 $("btnMcp").onclick = async () => {
   try {
     const data = await api("/api/write-mcp", { method: "POST", body: "{}" });

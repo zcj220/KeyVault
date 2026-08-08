@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import secrets
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -10,10 +11,11 @@ from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
-from starlette.responses import FileResponse, JSONResponse, RedirectResponse
+from starlette.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
+from keyvault.export_util import build_classified_export, to_markdown
 from keyvault.local_settings import (
     ROOT,
     apply_local_env,
@@ -343,6 +345,61 @@ async def api_write_mcp(request: Request) -> JSONResponse:
     return _json({"ok": True, "path": str(mcp_path), "config": existing})
 
 
+async def api_export(request: Request) -> Response:
+    """一键导出。
+    query:
+      format=md|json|encrypted
+      include_secret=0|1  （仅 md/json）
+    """
+    try:
+        store = _store_from_session(request)
+    except VaultError as exc:
+        return _json({"error": str(exc)}, 401)
+
+    fmt = (request.query_params.get("format") or "md").lower()
+    include_secret = request.query_params.get("include_secret", "1") in {"1", "true", "yes"}
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+
+    if fmt == "encrypted":
+        downloads = Path.home() / "Downloads"
+        downloads.mkdir(parents=True, exist_ok=True)
+        dest = downloads / f"keyvault-backup-{stamp}.kvault"
+        store.export_encrypted(dest)
+        return _json(
+            {
+                "ok": True,
+                "format": "encrypted",
+                "path": str(dest),
+                "message": "已导出加密备份到下载文件夹（可用 import 恢复）",
+            }
+        )
+
+    payload = build_classified_export(store, include_secret=include_secret)
+    if fmt == "json":
+        body = json.dumps(payload, ensure_ascii=False, indent=2)
+        filename = f"keyvault-分类导出-{stamp}.json"
+        media = "application/json; charset=utf-8"
+    else:
+        body = to_markdown(payload)
+        filename = f"keyvault-分类导出-{stamp}.md"
+        media = "text/markdown; charset=utf-8"
+
+    # 同时落一份到下载目录，方便用户找
+    downloads = Path.home() / "Downloads"
+    downloads.mkdir(parents=True, exist_ok=True)
+    saved = downloads / filename
+    saved.write_text(body, encoding="utf-8")
+
+    return Response(
+        content=body.encode("utf-8"),
+        media_type=media,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "X-Saved-Path": str(saved),
+        },
+    )
+
+
 routes = [
     Route("/", index),
     Route("/api/bootstrap", api_bootstrap),
@@ -363,6 +420,7 @@ routes = [
     ),
     Route("/api/mcp-config", api_mcp_config),
     Route("/api/write-mcp", api_write_mcp, methods=["POST"]),
+    Route("/api/export", api_export),
     Route("/api/reminders", api_reminders_list),
     Route("/api/reminders", api_reminders_create, methods=["POST"]),
     Route("/api/reminders/{id_or_title}/complete", api_reminders_complete, methods=["POST"]),
