@@ -10,11 +10,23 @@ if [[ ! -x .venv/bin/python ]]; then
   exit 1
 fi
 
+# 安全加载本地环境（路径可能含空格；勿直接 source）
 if [[ -f keyvault.local.env ]]; then
-  set -a
-  # shellcheck disable=SC1091
-  source keyvault.local.env
-  set +a
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    case "$line" in
+      ''|\#*) continue ;;
+    esac
+    [[ "$line" == *=* ]] || continue
+    key="${line%%=*}"
+    val="${line#*=}"
+    key="${key%"${key##*[![:space:]]}"}"
+    key="${key#"${key%%[![:space:]]*}"}"
+    val="${val#"${val%%[![:space:]]*}"}"
+    val="${val%"${val##*[![:space:]]}"}"
+    if [[ "$val" == \"*\" ]]; then val="${val:1:${#val}-2}"; fi
+    if [[ "$val" == \'*\' ]]; then val="${val:1:${#val}-2}"; fi
+    export "${key}=${val}"
+  done < keyvault.local.env
 fi
 
 PORT="${KEYVAULT_UI_PORT:-8799}"
