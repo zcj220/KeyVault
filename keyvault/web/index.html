@@ -44,6 +44,7 @@
       <div class="stats" id="statsBar"></div>
       <div class="row">
         <button id="btnExport" class="ghost" title="按分类导出全部资产/提醒">一键导出</button>
+        <button id="btnTrash" class="ghost" title="查看回收站（删除后保留30天）">回收站</button>
         <button id="btnMcp" class="ghost" title="把当前库接入 Cursor，让 AI 也能读写和提醒">接入 Cursor AI</button>
         <button id="btnLock" class="ghost" title="退出并锁定，下次需重新输入主密码">锁定退出</button>
       </div>
@@ -127,6 +128,28 @@
     </form>
   </dialog>
 
-  <script src="/static/app.js"></script>
+  <dialog id="trashDialog">
+    <div class="panel glass dlg">
+      <h2>回收站（保留 30 天）</h2>
+      <p class="muted">删除的条目会先放这里，可恢复；满 30 天自动彻底删除。</p>
+      <div id="trashList"></div>
+      <div class="row">
+        <button type="button" class="ghost" data-close-dialog="trashDialog">关闭</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="confirmDialog">
+    <div class="panel glass dlg confirm-dlg">
+      <h2 id="confirmTitle">确认删除</h2>
+      <p id="confirmMessage" class="confirm-msg"></p>
+      <div class="row confirm-actions">
+        <button type="button" class="ghost" id="confirmCancel">取消</button>
+        <button type="button" class="danger" id="confirmOk">确定删除</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="/static/app.js?v=20260808-2"></script>
 </body>
 </html>

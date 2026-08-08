@@ -223,6 +223,9 @@ dialog {
 }
 dialog::backdrop { background: rgba(2, 6, 12, 0.72); backdrop-filter: blur(4px); }
 .dlg h2 { margin: 0 0 8px; font-family: var(--display); letter-spacing: 0.08em; font-size: 18px; }
+.confirm-dlg { max-width: 420px; }
+.confirm-msg { margin: 12px 0 20px; line-height: 1.55; color: var(--text, #e8eef7); white-space: pre-wrap; }
+.confirm-actions { justify-content: flex-end; gap: 10px; }
 
 @media (max-width: 1100px) {
   .layout { grid-template-columns: 1fr; }

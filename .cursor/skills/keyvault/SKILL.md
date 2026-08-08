@@ -60,6 +60,12 @@ AI 应主动写入，不要只口头记下：
 周期参数 `repeat`：`once` | `weekly` | `monthly` | `quarterly` | `yearly`  
 （每周按到期日的星期几；每月按几号；每季度=每3个月；每年按月日。无需再自定义复杂规则。）
 
+## 删除与回收站
+
+- `delete_entry`：软删除，进回收站，约 30 天后自动彻底删除
+- 恢复：`restore_entry` / `list_trash`
+- 不要轻易彻底 purge；用户说「删错了」先查回收站
+
 ## 读取资产
 
 1. `search_entries` → `get_entry`

@@ -19,6 +19,47 @@ async function api(url, options = {}) {
   return data;
 }
 
+/** 页面内确认框（不依赖浏览器原生 confirm，避免被拦截） */
+function askConfirm(message, title = "确认删除") {
+  return new Promise((resolve) => {
+    const dlg = $("confirmDialog");
+    const msg = $("confirmMessage");
+    const ok = $("confirmOk");
+    const cancel = $("confirmCancel");
+    if (!dlg || !msg || !ok || !cancel) {
+      resolve(window.confirm(message));
+      return;
+    }
+    $("confirmTitle").textContent = title;
+    msg.textContent = message;
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      ok.onclick = null;
+      cancel.onclick = null;
+      dlg.oncancel = null;
+      dlg.onclose = null;
+      if (dlg.open) dlg.close();
+      resolve(value);
+    };
+    ok.onclick = (ev) => {
+      ev.preventDefault();
+      finish(true);
+    };
+    cancel.onclick = (ev) => {
+      ev.preventDefault();
+      finish(false);
+    };
+    dlg.oncancel = (ev) => {
+      ev.preventDefault();
+      finish(false);
+    };
+    dlg.onclose = () => finish(false);
+    if (!dlg.open) dlg.showModal();
+  });
+}
+
 function parseFieldsText(text) {
   return text
     .split("\n")
@@ -197,7 +238,8 @@ function renderReminderPanel() {
   });
   box.querySelectorAll("[data-del-rem]").forEach((btn) => {
     btn.onclick = async () => {
-      if (!confirm("删除这条提醒？")) return;
+      const ok = await askConfirm("确定要删除这条提醒吗？", "确认删除提醒");
+      if (!ok) return;
       await api(`/api/reminders/${encodeURIComponent(btn.dataset.delRem)}`, { method: "DELETE" });
       await refreshReminders();
     };
@@ -251,17 +293,21 @@ async function openEntry(name) {
   renderList();
   const fields = (item.fields || [])
     .map(
-      (f) => `<div class="field">
+      (f) => `<div class="field" data-field-id="${escapeAttr(f.id)}">
         <div>
           <strong>${escapeHtml(f.key)}</strong>
           ${f.secret ? '<div class="chip">敏感</div>' : ""}
           <div class="purpose">${escapeHtml(f.purpose || "")}</div>
         </div>
         <div>
-          <code>${escapeHtml(f.value)}</code>
-          ${f.secret ? `<div><button data-reveal="${escapeAttr(item.name)}" data-key="${escapeAttr(f.key)}">显示明文</button></div>` : ""}
+          <code class="field-value">${escapeHtml(f.value)}</code>
+          ${
+            f.secret
+              ? `<div><button type="button" class="btn-reveal" data-field-id="${escapeAttr(f.id)}">显示明文</button></div>`
+              : ""
+          }
         </div>
-        <div><button class="danger" data-rm-field="${escapeAttr(f.key)}">删除</button></div>
+        <div><button type="button" class="danger btn-rm-field" data-field-key="${escapeAttr(f.key)}">删除字段</button></div>
       </div>`
     )
     .join("");
@@ -273,9 +319,9 @@ async function openEntry(name) {
         <div class="muted">${escapeHtml(item.category)} / ${escapeHtml(item.kind)}</div>
       </div>
       <div class="row">
-        <button id="btnEditMeta" class="ghost">编辑</button>
-        <button id="btnAddField" class="ghost">加字段</button>
-        <button class="danger" id="btnDelete">删除</button>
+        <button type="button" id="btnEditMeta" class="ghost">编辑</button>
+        <button type="button" id="btnAddField" class="ghost">加字段</button>
+        <button type="button" class="danger" id="btnDelete">删除到回收站</button>
       </div>
     </div>
     <p>${escapeHtml(item.summary || "（无整体用途说明）")}</p>
@@ -286,27 +332,63 @@ async function openEntry(name) {
   $("btnEditMeta").onclick = () => openEditDialog(item);
   $("btnAddField").onclick = () => addFieldFlow(item.name);
   $("btnDelete").onclick = async () => {
-    if (!confirm(`确认删除「${item.name}」？`)) return;
+    const ok = await askConfirm(
+      `确定把「${item.name}」移入回收站吗？\n\n删除后可在回收站恢复，保留 30 天。`,
+      "确认删除资产"
+    );
+    if (!ok) return;
     await api(`/api/entries/${encodeURIComponent(item.name)}`, { method: "DELETE" });
     state.current = null;
+    $("detail").innerHTML = '<p class="muted">已移入回收站。可点右上角「回收站」恢复。</p>';
     await refreshList();
   };
-  $("detail").querySelectorAll("[data-rm-field]").forEach((btn) => {
-    btn.onclick = async () => {
-      if (!confirm(`删除字段 ${btn.dataset.rmField}？`)) return;
+  $("detail").querySelectorAll(".btn-rm-field").forEach((btn) => {
+    btn.onclick = async (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const key = btn.getAttribute("data-field-key");
+      const ok = await askConfirm(
+        `确定要删除字段「${key}」吗？\n\n删除后该字段内容将无法恢复。`,
+        "确认删除字段"
+      );
+      if (!ok) return;
       await api(
-        `/api/entries/${encodeURIComponent(item.name)}/fields/${encodeURIComponent(btn.dataset.rmField)}`,
+        `/api/entries/${encodeURIComponent(item.name)}/fields/${encodeURIComponent(key)}`,
         { method: "DELETE" }
       );
       await openEntry(item.name);
       await refreshList();
     };
   });
-  $("detail").querySelectorAll("[data-reveal]").forEach((btn) => {
-    btn.onclick = async () => {
-      const full = await api(`/api/entries/${encodeURIComponent(btn.dataset.reveal)}?show_secret=1`);
-      const field = (full.fields || []).find((f) => f.key === btn.dataset.key);
-      if (field) alert(`${field.key}:\n${field.value}`);
+  $("detail").querySelectorAll(".btn-reveal").forEach((btn) => {
+    btn.onclick = async (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const fieldId = btn.getAttribute("data-field-id");
+      const wrap = btn.closest(".field");
+      const code = wrap?.querySelector(".field-value");
+      if (!code) return;
+      try {
+        if (btn.dataset.shown === "1") {
+          code.textContent = "***";
+          btn.textContent = "显示明文";
+          btn.dataset.shown = "0";
+          return;
+        }
+        const full = await api(
+          `/api/entries/${encodeURIComponent(item.id)}?show_secret=1`
+        );
+        const field = (full.fields || []).find((f) => f.id === fieldId);
+        if (!field) {
+          alert("未找到该字段");
+          return;
+        }
+        code.textContent = field.value;
+        btn.textContent = "隐藏明文";
+        btn.dataset.shown = "1";
+      } catch (err) {
+        alert("显示失败：" + err.message);
+      }
     };
   });
 }
@@ -442,6 +524,55 @@ document.querySelectorAll("[data-close-dialog]").forEach((btn) => {
     if (dlg?.open) dlg.close();
   });
 });
+$("btnTrash").onclick = async () => {
+  const box = $("trashList");
+  box.innerHTML = "<p class='muted'>加载中…</p>";
+  $("trashDialog").showModal();
+  try {
+    const items = await api("/api/trash");
+    if (!items.length) {
+      box.innerHTML = "<p class='muted'>回收站是空的</p>";
+      return;
+    }
+    box.innerHTML = items
+      .map(
+        (e) => `<div class="reminder-card">
+        <div class="t">${escapeHtml(e.name)}</div>
+        <div class="d">${escapeHtml(e.category)} · 删除于 ${escapeHtml(e.deleted_at || "")}</div>
+        <div class="actions">
+          <button type="button" class="primary" data-restore="${escapeAttr(e.id)}">恢复</button>
+          <button type="button" class="danger" data-purge="${escapeAttr(e.id)}">彻底删除</button>
+        </div>
+      </div>`
+      )
+      .join("");
+    box.querySelectorAll("[data-restore]").forEach((btn) => {
+      btn.onclick = async () => {
+        await api(`/api/trash/${encodeURIComponent(btn.getAttribute("data-restore"))}/restore`, {
+          method: "POST",
+          body: "{}",
+        });
+        await refreshList();
+        $("btnTrash").click();
+      };
+    });
+    box.querySelectorAll("[data-purge]").forEach((btn) => {
+      btn.onclick = async () => {
+        const ok = await askConfirm(
+          "彻底删除后无法恢复，确定吗？",
+          "确认彻底删除"
+        );
+        if (!ok) return;
+        await api(`/api/trash/${encodeURIComponent(btn.getAttribute("data-purge"))}`, {
+          method: "DELETE",
+        });
+        $("btnTrash").click();
+      };
+    });
+  } catch (err) {
+    box.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+  }
+};
 $("btnExport").onclick = async () => {
   const choice = prompt(
     "导出方式：\n1 = 按分类 Markdown（含明文，推荐阅读）\n2 = 按分类 JSON（含明文）\n3 = 加密备份 .kvault（最安全，可导入恢复）\n4 = 按分类 Markdown（打码，不含明文）\n\n请输入 1/2/3/4",

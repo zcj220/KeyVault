@@ -50,7 +50,7 @@ def _store_from_session(request: Request) -> VaultStore:
 
 
 async def index(_: Request) -> FileResponse:
-    return FileResponse(WEB_DIR / "index.html")
+    return FileResponse(WEB_DIR / "index.html", media_type="text/html; charset=utf-8")
 
 
 async def api_bootstrap(_: Request) -> JSONResponse:
@@ -210,7 +210,40 @@ async def api_delete(request: Request) -> JSONResponse:
     try:
         store = _store_from_session(request)
         item = store.delete(request.path_params["name_or_id"])
-        return _json({"ok": True, "deleted": item.name})
+        return _json(
+            {
+                "ok": True,
+                "deleted": item.name,
+                "message": "已移入回收站，保留 30 天后自动彻底删除",
+            }
+        )
+    except VaultError as exc:
+        return _json({"error": str(exc)}, 400)
+
+
+async def api_trash_list(request: Request) -> JSONResponse:
+    try:
+        store = _store_from_session(request)
+        items = store.list_trash()
+        return _json([i.public_view(include_secret=False) for i in items])
+    except VaultError as exc:
+        return _json({"error": str(exc)}, 401)
+
+
+async def api_restore(request: Request) -> JSONResponse:
+    try:
+        store = _store_from_session(request)
+        item = store.restore(request.path_params["name_or_id"])
+        return _json({"ok": True, "item": item.public_view(include_secret=False)})
+    except VaultError as exc:
+        return _json({"error": str(exc)}, 400)
+
+
+async def api_purge(request: Request) -> JSONResponse:
+    try:
+        store = _store_from_session(request)
+        item = store.purge(request.path_params["name_or_id"])
+        return _json({"ok": True, "purged": item.name})
     except VaultError as exc:
         return _json({"error": str(exc)}, 400)
 
@@ -418,6 +451,9 @@ routes = [
         api_remove_field,
         methods=["DELETE"],
     ),
+    Route("/api/trash", api_trash_list),
+    Route("/api/trash/{name_or_id}/restore", api_restore, methods=["POST"]),
+    Route("/api/trash/{name_or_id}", api_purge, methods=["DELETE"]),
     Route("/api/mcp-config", api_mcp_config),
     Route("/api/write-mcp", api_write_mcp, methods=["POST"]),
     Route("/api/export", api_export),

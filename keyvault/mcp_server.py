@@ -352,18 +352,44 @@ def update_credential(
 
 @mcp.tool()
 def delete_entry(name_or_id: str) -> str:
-    """删除一整条资产。"""
+    """软删除一条资产（进回收站，保留 30 天）。"""
     try:
         item = _store().delete(name_or_id)
-        return _ok({"ok": True, "deleted": item.name})
+        return _ok(
+            {
+                "ok": True,
+                "deleted": item.name,
+                "message": "已移入回收站，30 天后自动彻底删除；可用 restore_entry 恢复",
+            }
+        )
     except Exception as exc:  # noqa: BLE001
         return _err(exc)
 
 
 @mcp.tool()
 def delete_credential(name_or_id: str) -> str:
-    """兼容旧名：等同 delete_entry。"""
+    """兼容旧名：等同 delete_entry（软删除）。"""
     return delete_entry(name_or_id)
+
+
+@mcp.tool()
+def list_trash() -> str:
+    """查看回收站中的条目。"""
+    try:
+        items = _store().list_trash()
+        return _ok([i.public_view(include_secret=False) for i in items])
+    except Exception as exc:  # noqa: BLE001
+        return _err(exc)
+
+
+@mcp.tool()
+def restore_entry(name_or_id: str) -> str:
+    """从回收站恢复一条资产。"""
+    try:
+        item = _store().restore(name_or_id)
+        return _ok({"ok": True, "item": item.public_view(include_secret=False)})
+    except Exception as exc:  # noqa: BLE001
+        return _err(exc)
 
 
 @mcp.tool()

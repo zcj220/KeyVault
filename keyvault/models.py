@@ -125,6 +125,7 @@ class Entry:
     expires_at: str | None = None
     created_at: str = field(default_factory=utc_now_iso)
     updated_at: str = field(default_factory=utc_now_iso)
+    deleted_at: str | None = None  # 软删除时间；None 表示未删除
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -138,6 +139,7 @@ class Entry:
             "expires_at": self.expires_at,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
+            "deleted_at": self.deleted_at,
         }
 
     @classmethod
@@ -159,6 +161,7 @@ class Entry:
             expires_at=parse_expiry(data.get("expires_at")),
             created_at=str(data.get("created_at") or utc_now_iso()),
             updated_at=str(data.get("updated_at") or utc_now_iso()),
+            deleted_at=str(data["deleted_at"]) if data.get("deleted_at") else None,
         )
 
     @classmethod
@@ -286,6 +289,7 @@ class Entry:
             "expiry_status": self.expiry_status(),
             "created_at": self.created_at,
             "updated_at": self.updated_at,
+            "deleted_at": self.deleted_at,
             "fields": [f.public_view(include_secret=include_secret) for f in self.fields],
         }
 

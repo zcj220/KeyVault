@@ -98,7 +98,39 @@ class VaultStore:
             raise VaultError(str(exc)) from exc
         self._data = VaultData.from_dict(payload)
         self._remember_file()
+        # 超过 30 天的回收站条目物理清除
+        if self._purge_trash_locked(days=30):
+            self.save()
         return self._data
+
+    def _purge_trash_locked(self, days: int = 30) -> bool:
+        """调用方需已 load；返回是否有删除发生。"""
+        from datetime import datetime, timedelta, timezone
+
+        data = self._data
+        if data is None:
+            return False
+        now = datetime.now(timezone.utc)
+        keep: list = []
+        changed = False
+        for item in data.entries:
+            if not item.deleted_at:
+                keep.append(item)
+                continue
+            try:
+                deleted = datetime.fromisoformat(item.deleted_at.replace("Z", "+00:00"))
+                if deleted.tzinfo is None:
+                    deleted = deleted.replace(tzinfo=timezone.utc)
+            except ValueError:
+                keep.append(item)
+                continue
+            if now - deleted <= timedelta(days=days):
+                keep.append(item)
+            else:
+                changed = True
+        if changed:
+            data.entries = keep
+        return changed
 
     def save(self) -> None:
         data = self.load() if self._data is None else self._data
@@ -117,8 +149,16 @@ class VaultStore:
         self._file_size = None
         return self.load()
 
-    def list_all(self) -> list[Entry]:
-        return list(self.load().entries)
+    def list_all(self, include_deleted: bool = False) -> list[Entry]:
+        items = list(self.load().entries)
+        if include_deleted:
+            return items
+        return [e for e in items if not e.deleted_at]
+
+    def list_trash(self) -> list[Entry]:
+        items = [e for e in self.load().entries if e.deleted_at]
+        items.sort(key=lambda e: e.deleted_at or "", reverse=True)
+        return items
 
     def search(
         self,
@@ -127,10 +167,11 @@ class VaultStore:
         tag: str | None = None,
         kind: str | None = None,
         include_expired: bool = True,
+        include_deleted: bool = False,
     ) -> list[Entry]:
         q = query.strip().lower()
         results: list[Entry] = []
-        for item in self.load().entries:
+        for item in self.list_all(include_deleted=include_deleted):
             if category and item.category != category:
                 continue
             if tag and tag not in item.tags:
@@ -145,14 +186,15 @@ class VaultStore:
         results.sort(key=lambda c: c.name.lower())
         return results
 
-    def get(self, name_or_id: str) -> Entry:
+    def get(self, name_or_id: str, include_deleted: bool = False) -> Entry:
         key = name_or_id.strip()
-        for item in self.load().entries:
+        items = self.list_all(include_deleted=include_deleted)
+        for item in items:
             if item.id == key or item.name == key:
                 return item
         matches = [
             item
-            for item in self.load().entries
+            for item in items
             if key.lower() in item.name.lower() or item.id.startswith(key)
         ]
         if len(matches) == 1:
@@ -165,7 +207,7 @@ class VaultStore:
     def add(self, entry: Entry) -> Entry:
         data = self.load()
         for item in data.entries:
-            if item.name == entry.name:
+            if item.name == entry.name and not item.deleted_at:
                 raise VaultError(f"名称已存在：{entry.name}")
         data.entries.append(entry)
         self.save()
@@ -271,7 +313,31 @@ class VaultStore:
         return entry
 
     def delete(self, name_or_id: str) -> Entry:
-        entry = self.get(name_or_id)
+        """软删除：进入回收站，默认保留 30 天。"""
+        entry = self.get(name_or_id, include_deleted=False)
+        entry.deleted_at = utc_now_iso()
+        entry.updated_at = utc_now_iso()
+        self.save()
+        return entry
+
+    def restore(self, name_or_id: str) -> Entry:
+        entry = self.get(name_or_id, include_deleted=True)
+        if not entry.deleted_at:
+            raise VaultError("该条目不在回收站中")
+        # 恢复时若有同名未删除条目，自动改名
+        active_names = {e.name for e in self.list_all(include_deleted=False) if e.id != entry.id}
+        if entry.name in active_names:
+            entry.name = f"{entry.name}-恢复"
+        entry.deleted_at = None
+        entry.updated_at = utc_now_iso()
+        self.save()
+        return entry
+
+    def purge(self, name_or_id: str) -> Entry:
+        """从回收站彻底删除。"""
+        entry = self.get(name_or_id, include_deleted=True)
+        if not entry.deleted_at:
+            raise VaultError("只能彻底删除回收站中的条目；请先删除到回收站")
         data = self.load()
         data.entries = [c for c in data.entries if c.id != entry.id]
         self.save()
@@ -279,7 +345,7 @@ class VaultStore:
 
     def expiring(self, within_days: int = 14) -> list[Entry]:
         out: list[Entry] = []
-        for item in self.load().entries:
+        for item in self.list_all(include_deleted=False):
             days = item.days_until_expiry()
             if days is None:
                 continue
