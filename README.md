@@ -35,7 +35,8 @@
 
 AI 用 MCP；你自己用浏览器界面——两端读写的是**同一个加密库文件**。
 
-**Mac 最省事：** Finder 里双击 `scripts/KeyVault启动.command`（会自动开服务并打开网页）。  
+**Mac 最省事：** 双击桌面或项目根目录的 **KeyVault.app**（青绿保险箱图标）。  
+也可双击 `scripts/KeyVault启动.command`。重新生成图标应用：`./scripts/build-macos-app.sh`  
 **Windows：** 双击 `scripts/KeyVault启动.bat`。
 
 也可以命令行：

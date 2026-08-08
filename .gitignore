@@ -21,3 +21,6 @@ Thumbs.db
 mcp.json
 
 backups/
+
+# 本地生成的启动 App（用 scripts/build-macos-app.sh 生成）
+KeyVault.app/
