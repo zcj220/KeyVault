@@ -37,7 +37,9 @@ AI 用 MCP；你自己用浏览器界面——两端读写的是**同一个加�
 
 **Mac 最省事：** 双击桌面或项目根目录的 **KeyVault.app**（青绿保险箱图标）。  
 也可双击 `scripts/KeyVault启动.command`。重新生成图标应用：`./scripts/build-macos-app.sh`  
-**Windows：** 双击 `scripts/KeyVault启动.bat`。
+**Windows：** 先运行 `powershell -ExecutionPolicy Bypass -File .\scripts\build-windows-shortcut.ps1`，桌面会出现带图标的 **KeyVault** 快捷方式；也可双击 `scripts\KeyVault启动.bat`。
+
+Cursor 里 MCP 已在跑时，再点启动器**不会冲突**：MCP 是对话读写库，启动器只开本机网页（端口 8799）。网页若已开着，只会再打开浏览器，不会重复起服务。两边不要同时改同一条密码即可。
 
 也可以命令行：
 
