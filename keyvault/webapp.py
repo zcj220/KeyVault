@@ -15,7 +15,7 @@ from starlette.responses import FileResponse, JSONResponse, RedirectResponse, Re
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
-from keyvault.export_util import build_classified_export, to_markdown
+from keyvault.export_util import build_classified_export, to_excel_bytes, to_markdown
 from keyvault.local_settings import (
     ROOT,
     apply_local_env,
@@ -381,8 +381,8 @@ async def api_write_mcp(request: Request) -> JSONResponse:
 async def api_export(request: Request) -> Response:
     """一键导出。
     query:
-      format=md|json|encrypted
-      include_secret=0|1  （仅 md/json）
+      format=md|json|xlsx|excel|encrypted
+      include_secret=0|1  （仅 md/json/xlsx）
     """
     try:
         store = _store_from_session(request)
@@ -390,12 +390,14 @@ async def api_export(request: Request) -> Response:
         return _json({"error": str(exc)}, 401)
 
     fmt = (request.query_params.get("format") or "md").lower()
+    if fmt == "excel":
+        fmt = "xlsx"
     include_secret = request.query_params.get("include_secret", "1") in {"1", "true", "yes"}
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    downloads = Path.home() / "Downloads"
+    downloads.mkdir(parents=True, exist_ok=True)
 
     if fmt == "encrypted":
-        downloads = Path.home() / "Downloads"
-        downloads.mkdir(parents=True, exist_ok=True)
         dest = downloads / f"keyvault-backup-{stamp}.kvault"
         store.export_encrypted(dest)
         return _json(
@@ -408,23 +410,34 @@ async def api_export(request: Request) -> Response:
         )
 
     payload = build_classified_export(store, include_secret=include_secret)
+    if fmt == "xlsx":
+        filename = f"keyvault-分类导出-{stamp}.xlsx"
+        body = to_excel_bytes(payload)
+        saved = downloads / filename
+        saved.write_bytes(body)
+        return Response(
+            content=body,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "X-Saved-Path": str(saved),
+            },
+        )
+
     if fmt == "json":
-        body = json.dumps(payload, ensure_ascii=False, indent=2)
+        text = json.dumps(payload, ensure_ascii=False, indent=2)
         filename = f"keyvault-分类导出-{stamp}.json"
         media = "application/json; charset=utf-8"
     else:
-        body = to_markdown(payload)
+        text = to_markdown(payload)
         filename = f"keyvault-分类导出-{stamp}.md"
         media = "text/markdown; charset=utf-8"
 
-    # 同时落一份到下载目录，方便用户找
-    downloads = Path.home() / "Downloads"
-    downloads.mkdir(parents=True, exist_ok=True)
     saved = downloads / filename
-    saved.write_text(body, encoding="utf-8")
+    saved.write_text(text, encoding="utf-8")
 
     return Response(
-        content=body.encode("utf-8"),
+        content=text.encode("utf-8"),
         media_type=media,
         headers={
             "Content-Disposition": f'attachment; filename="{filename}"',

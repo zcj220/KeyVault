@@ -455,15 +455,21 @@ def export_vault(
     format: str = "md",
     include_secret: bool = True,
 ) -> str:
-    """按分类一键导出记忆库。format=md|json|encrypted；encrypted 导出到用户下载目录。"""
+    """按分类一键导出记忆库。format=md|json|xlsx|excel|encrypted；encrypted/xlsx 等到用户下载目录。"""
     try:
         from datetime import datetime
         from pathlib import Path
 
-        from keyvault.export_util import build_classified_export, to_markdown
+        from keyvault.export_util import (
+            build_classified_export,
+            to_markdown,
+            write_excel,
+        )
 
         store = _store()
         fmt = (format or "md").lower()
+        if fmt == "excel":
+            fmt = "xlsx"
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         downloads = Path.home() / "Downloads"
         downloads.mkdir(parents=True, exist_ok=True)
@@ -474,13 +480,16 @@ def export_vault(
             return _ok({"ok": True, "format": "encrypted", "path": str(dest)})
 
         payload = build_classified_export(store, include_secret=include_secret)
-        if fmt == "json":
+        if fmt == "xlsx":
+            dest = write_excel(payload, downloads / f"keyvault-分类导出-{stamp}.xlsx")
+        elif fmt == "json":
             dest = downloads / f"keyvault-分类导出-{stamp}.json"
             dest.write_text(
                 json.dumps(payload, ensure_ascii=False, indent=2),
                 encoding="utf-8",
             )
         else:
+            fmt = "md"
             dest = downloads / f"keyvault-分类导出-{stamp}.md"
             dest.write_text(to_markdown(payload), encoding="utf-8")
         return _ok(

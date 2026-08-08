@@ -40,6 +40,7 @@ AI 应主动写入，不要只口头记下：
 
 - `format=md`：按分类 Markdown（默认可含明文）
 - `format=json`：按分类 JSON
+- `format=xlsx`（或 `excel`）：按分类 Excel，含总览/各分类表/创建修改时间
 - `format=encrypted`：加密 `.kvault` 备份（最安全）
 
 文件会写到用户「下载」文件夹。

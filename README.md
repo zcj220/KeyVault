@@ -33,8 +33,12 @@
 
 ## 本地管理界面（你自己也能看、能改）
 
-
 AI 用 MCP；你自己用浏览器界面——两端读写的是**同一个加密库文件**。
+
+**Mac 最省事：** Finder 里双击 `scripts/KeyVault启动.command`（会自动开服务并打开网页）。  
+**Windows：** 双击 `scripts/KeyVault启动.bat`。
+
+也可以命令行：
 
 ```powershell
 cd "D:\projects\key angent"
@@ -49,6 +53,8 @@ cd "D:\projects\key angent"
 4. 点「SYNC MCP」把 AI 接入配好  
 
 提醒也可对 AI 说：`提醒我 2026-09-01 续费 Cloudflare`。  
+
+以后若要打成安装包 / Dock 图标，见 **[包装成可用项目.md](./包装成可用项目.md)**。
 
 
 默认库路径：`C:\Users\你的用户名\OneDrive\KeyVault\vault.kvault`（本机 OneDrive 已可用）。  
@@ -145,6 +151,7 @@ OneDrive / 坚果云自动同步密文文件
 | `search_entries` | 搜索（默认隐藏敏感值） |
 | `get_entry` | 精确读取并回答 |
 | `list_expiring` | 过期巡检 |
+| `export_vault` | 导出 md / json / xlsx / encrypted |
 
 ## 安全说明
 

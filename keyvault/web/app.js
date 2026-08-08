@@ -575,8 +575,8 @@ $("btnTrash").onclick = async () => {
 };
 $("btnExport").onclick = async () => {
   const choice = prompt(
-    "导出方式：\n1 = 按分类 Markdown（含明文，推荐阅读）\n2 = 按分类 JSON（含明文）\n3 = 加密备份 .kvault（最安全，可导入恢复）\n4 = 按分类 Markdown（打码，不含明文）\n\n请输入 1/2/3/4",
-    "1"
+    "导出方式：\n1 = 按分类 Markdown（含明文）\n2 = 按分类 JSON（含明文）\n3 = 加密备份 .kvault（最安全）\n4 = 按分类 Markdown（打码）\n5 = 按分类 Excel .xlsx（含明文，推荐对照）\n6 = 按分类 Excel .xlsx（打码）\n\n请输入 1/2/3/4/5/6",
+    "5"
   );
   if (!choice) return;
   const map = {
@@ -584,10 +584,12 @@ $("btnExport").onclick = async () => {
     "2": { format: "json", include_secret: true },
     "3": { format: "encrypted", include_secret: false },
     "4": { format: "md", include_secret: false },
+    "5": { format: "xlsx", include_secret: true },
+    "6": { format: "xlsx", include_secret: false },
   };
   const opt = map[choice.trim()];
   if (!opt) {
-    alert("请输入 1、2、3 或 4");
+    alert("请输入 1、2、3、4、5 或 6");
     return;
   }
   if (opt.include_secret && opt.format !== "encrypted") {
@@ -614,7 +616,8 @@ $("btnExport").onclick = async () => {
     const saved = res.headers.get("X-Saved-Path") || "";
     const cd = res.headers.get("Content-Disposition") || "";
     const m = /filename=\"([^\"]+)\"/.exec(cd);
-    const filename = m ? m[1] : `keyvault-export.${opt.format}`;
+    const ext = opt.format === "xlsx" ? "xlsx" : opt.format;
+    const filename = m ? m[1] : `keyvault-export.${ext}`;
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
