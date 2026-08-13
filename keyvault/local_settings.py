@@ -12,12 +12,16 @@ def load_local_env() -> dict[str, str]:
     data: dict[str, str] = {}
     if not LOCAL_ENV.is_file():
         return data
-    for line in LOCAL_ENV.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
+    # utf-8-sig strips a leading BOM; also strip BOM from individual keys/lines
+    for line in LOCAL_ENV.read_text(encoding="utf-8-sig").splitlines():
+        line = line.strip().lstrip("\ufeff").strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, value = line.split("=", 1)
-        data[key.strip()] = value.strip().strip('"').strip("'")
+        key = key.strip().lstrip("\ufeff")
+        if not key:
+            continue
+        data[key] = value.strip().strip('"').strip("'")
     return data
 
 
@@ -30,6 +34,12 @@ def apply_local_env() -> None:
 def save_local_env(updates: dict[str, str]) -> None:
     current = load_local_env()
     current.update({k: v for k, v in updates.items() if v is not None})
+    # Drop accidental BOM-prefixed duplicate keys
+    current = {
+        k.lstrip("\ufeff"): v
+        for k, v in current.items()
+        if k and k.lstrip("\ufeff")
+    }
     lines = ["# KeyVault 本地配置（不要提交到 Git）"]
     for key in ("KEYVAULT_PATH", "KEYVAULT_PASSWORD", "KEYVAULT_UI_PORT"):
         if key in current and current[key]:

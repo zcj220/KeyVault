@@ -41,8 +41,8 @@ PLIST="$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c 'Set :CFBundleDisplayName KeyVault' "$PLIST" 2>/dev/null || \
   /usr/libexec/PlistBuddy -c 'Add :CFBundleDisplayName string KeyVault' "$PLIST" || true
 /usr/libexec/PlistBuddy -c 'Set :CFBundleIconFile applet' "$PLIST" 2>/dev/null || true
-/usr/libexec/PlistBuddy -c 'Set :CFBundleIdentifier com.xinzaoai.keyvault.launcher' "$PLIST" 2>/dev/null || \
-  /usr/libexec/PlistBuddy -c 'Add :CFBundleIdentifier string com.xinzaoai.keyvault.launcher' "$PLIST" || true
+/usr/libexec/PlistBuddy -c 'Set :CFBundleIdentifier com.local.keyvault.launcher' "$PLIST" 2>/dev/null || \
+  /usr/libexec/PlistBuddy -c 'Add :CFBundleIdentifier string com.local.keyvault.launcher' "$PLIST" || true
 
 xattr -cr "$APP" 2>/dev/null || true
 codesign --force --deep -s - "$APP" >/dev/null

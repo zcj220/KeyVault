@@ -314,7 +314,8 @@ def import_workbook(store: VaultStore, path: Path) -> dict[str, list[str]]:
     result: dict[str, list[str]] = {}
     for sheet_name in wb.sheetnames:
         ws = wb[sheet_name]
-        cat = sheet_name.replace("（轻语知交）", "").strip()
+        # 去掉表名里常见的括号备注，如「企业基础（某某）」
+        cat = sheet_name.split("（", 1)[0].strip() or sheet_name.strip()
         if sheet_name.startswith("企业基础"):
             result[sheet_name] = import_kv_sheet(store, ws, "企业基础", "企业基础-总览")
         elif "开放平台" in sheet_name or "支付" in sheet_name:
@@ -323,9 +324,8 @@ def import_workbook(store: VaultStore, path: Path) -> dict[str, list[str]]:
             result[sheet_name] = import_site_table(store, ws, cat, server_mode=True)
         elif "域名" in sheet_name or "DNS" in sheet_name:
             result[sheet_name] = import_site_table(store, ws, cat, server_mode=False)
-        elif "Whisperkin" in sheet_name:
-            # 拆成几个逻辑条目更清晰
-            result[sheet_name] = import_whisperkin(store, ws)
+        elif "项目业务" in sheet_name or "业务项目" in sheet_name:
+            result[sheet_name] = import_project_business(store, ws)
         elif "杂记" in sheet_name:
             result[sheet_name] = import_kv_sheet(store, ws, "杂记", "杂记-总览")
         elif "国外" in sheet_name or "国内" in sheet_name:
@@ -335,15 +335,16 @@ def import_workbook(store: VaultStore, path: Path) -> dict[str, list[str]]:
     return result
 
 
-def import_whisperkin(store: VaultStore, ws) -> list[str]:
+def import_project_business(store: VaultStore, ws) -> list[str]:
+    """从「项目业务」类工作表导入：按分区标题拆成若干条目。"""
     names: list[str] = []
     buckets: dict[str, list[FieldItem]] = {
-        "Whisperkin-Apple": [],
-        "Whisperkin-GoogleOAuth": [],
-        "Whisperkin-其他服务": [],
-        "Whisperkin-业务邮箱": [],
+        "项目业务-Apple": [],
+        "项目业务-GoogleOAuth": [],
+        "项目业务-其他服务": [],
+        "项目业务-业务邮箱": [],
     }
-    mode = "Whisperkin-Apple"
+    mode = "项目业务-Apple"
     for row in ws.iter_rows(values_only=True):
         vals = [_s(x) for x in row]
         # openpyxl 该表常见空第一列
@@ -353,13 +354,13 @@ def import_whisperkin(store: VaultStore, ws) -> list[str]:
             a, b = vals[0], vals[1] if len(vals) > 1 else ""
         if not a and not b:
             continue
-        if a in {"Google OAuth", "其他服务", "whisperkin.com 业务邮箱"} or "业务邮箱" in a:
+        if a in {"Google OAuth", "其他服务"} or "业务邮箱" in a:
             if "Google" in a:
-                mode = "Whisperkin-GoogleOAuth"
+                mode = "项目业务-GoogleOAuth"
             elif "其他" in a:
-                mode = "Whisperkin-其他服务"
+                mode = "项目业务-其他服务"
             elif "邮箱" in a:
-                mode = "Whisperkin-业务邮箱"
+                mode = "项目业务-业务邮箱"
             continue
         if a in {"客户端", "服务", "邮箱"}:
             continue
@@ -376,9 +377,9 @@ def import_whisperkin(store: VaultStore, ws) -> list[str]:
                 store,
                 Entry(
                     name=name,
-                    category="Whisperkin",
+                    category="项目业务",
                     kind="asset",
-                    summary="来自 Excel Whisperkin 表",
+                    summary="来自 Excel 项目业务表",
                     fields=fields,
                 ),
             )

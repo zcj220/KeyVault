@@ -14,7 +14,7 @@ SUGGESTED_CATEGORIES = [
     "国内网站",
     "服务器及数据库",
     "域名DNS邮件",
-    "Whisperkin",
+    "项目业务",
     "杂记",
     "其他",
 ]

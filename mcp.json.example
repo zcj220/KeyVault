@@ -1,11 +1,11 @@
 {
   "mcpServers": {
     "keyvault": {
-      "command": "D:\\projects\\key angent\\.venv\\Scripts\\python.exe",
+      "command": "D:\\Projects\\KeyVault\\.venv\\Scripts\\python.exe",
       "args": ["-m", "keyvault.mcp_server"],
-      "cwd": "D:\\projects\\key angent",
+      "cwd": "D:\\Projects\\KeyVault",
       "env": {
-        "KEYVAULT_PATH": "D:\\OneDrive\\KeyVault\\vault.kvault",
+        "KEYVAULT_PATH": "C:\\Users\\你的用户名\\OneDrive\\KeyVault\\vault.kvault",
         "KEYVAULT_PASSWORD": "请改成你的主密码"
       }
     }

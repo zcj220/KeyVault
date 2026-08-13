@@ -7,6 +7,7 @@ let state = {
   categories: [],
   reminders: [],
   due: [],
+  showAllReminders: false,
 };
 
 async function api(url, options = {}) {
@@ -178,46 +179,42 @@ function renderAlertBar() {
 
 async function refreshReminders() {
   state.reminders = await api("/api/reminders?include_done=1");
-  state.due = state.reminders.filter((r) => r.should_alert);
+  state.due = state.reminders.filter((r) => !r.done && r.should_alert);
   $("dueBadge").textContent = String(state.due.length);
+  const btn = $("btnToggleReminders");
+  if (btn) {
+    btn.textContent = state.showAllReminders ? "只看待提醒" : "查看全部";
+  }
   renderAlertBar();
   renderReminderPanel();
 }
 
-function renderReminderPanel() {
-  const box = $("reminderPanel");
-  const items = state.reminders.filter((r) => !r.done).concat(state.reminders.filter((r) => r.done).slice(0, 5));
-  if (!items.length) {
-    box.innerHTML = '<p class="muted" style="padding:12px">暂无提醒。可点「+ 提醒」或让 AI 帮你写入。</p>';
-    return;
-  }
-  box.innerHTML = items
-    .map((r) => {
-      const level = r.alert_level;
-      const when =
-        level === "done"
-          ? "已完成"
-          : level === "overdue"
-            ? `过期 ${Math.abs(r.days_until_due)} 天`
-            : r.days_until_due === 0
-              ? "今天"
-              : `${r.days_until_due} 天后`;
-      return `<div class="reminder-card ${level}">
-        <div class="t">${escapeHtml(r.title)}</div>
-          <div class="d">${escapeHtml(r.due_at)} · ${escapeHtml(r.repeat_label || "仅一次")} · 提前${r.remind_before_days}天 · ${when}</div>
-        ${r.notes ? `<div class="purpose">${escapeHtml(r.notes)}</div>` : ""}
-        <div class="actions">
-          ${
-            r.done
-              ? `<button data-undone="${escapeAttr(r.id)}">恢复</button>`
-              : `<button class="primary" data-done="${escapeAttr(r.id)}">完成</button>`
-          }
-          <button class="danger" data-del-rem="${escapeAttr(r.id)}">删除</button>
-        </div>
-      </div>`;
-    })
-    .join("");
+function reminderCardHtml(r) {
+  const level = r.alert_level;
+  const when =
+    level === "done"
+      ? "已完成"
+      : level === "overdue"
+        ? `过期 ${Math.abs(r.days_until_due)} 天`
+        : r.days_until_due === 0
+          ? "今天"
+          : `${r.days_until_due} 天后`;
+  return `<div class="reminder-card ${level}">
+    <div class="t">${escapeHtml(r.title)}</div>
+      <div class="d">${escapeHtml(r.due_at)} · ${escapeHtml(r.repeat_label || "仅一次")} · 提前${r.remind_before_days}天 · ${when}</div>
+    ${r.notes ? `<div class="purpose">${escapeHtml(r.notes)}</div>` : ""}
+    <div class="actions">
+      ${
+        r.done
+          ? `<button data-undone="${escapeAttr(r.id)}">恢复</button>`
+          : `<button class="primary" data-done="${escapeAttr(r.id)}">完成</button>`
+      }
+      <button class="danger" data-del-rem="${escapeAttr(r.id)}">删除</button>
+    </div>
+  </div>`;
+}
 
+function bindReminderActions(box) {
   box.querySelectorAll("[data-done]").forEach((btn) => {
     btn.onclick = async () => {
       await api(`/api/reminders/${encodeURIComponent(btn.dataset.done)}/complete`, {
@@ -244,6 +241,55 @@ function renderReminderPanel() {
       await refreshReminders();
     };
   });
+}
+
+function renderReminderPanel() {
+  const box = $("reminderPanel");
+  const open = state.reminders.filter((r) => !r.done);
+  const dueNow = open.filter((r) => r.should_alert);
+  const later = open.filter((r) => !r.should_alert);
+  const done = state.reminders.filter((r) => r.done).slice(0, 5);
+
+  // Default: only show due/soon alerts. "查看全部" shows the rest too.
+  let items;
+  if (state.showAllReminders) {
+    items = dueNow.concat(later).concat(done);
+  } else {
+    items = dueNow;
+  }
+
+  if (!items.length) {
+    if (!open.length) {
+      box.innerHTML = '<p class="muted" style="padding:12px">暂无提醒。可点「+ 新建提醒」或让 AI 帮你写入。</p>';
+    } else {
+      box.innerHTML = `<p class="muted" style="padding:12px">当前没有需要提醒的待办（未到提前天数）。共 ${open.length} 条已排期，点右上角「查看全部」可浏览。</p>`;
+    }
+    return;
+  }
+
+  const parts = [];
+  if (state.showAllReminders && later.length && dueNow.length) {
+    parts.push('<p class="muted rem-section">需要提醒</p>');
+    parts.push(dueNow.map(reminderCardHtml).join(""));
+    parts.push('<p class="muted rem-section">未到时间（仅浏览）</p>');
+    parts.push(later.map(reminderCardHtml).join(""));
+    if (done.length) {
+      parts.push('<p class="muted rem-section">最近完成</p>');
+      parts.push(done.map(reminderCardHtml).join(""));
+    }
+  } else if (state.showAllReminders && later.length && !dueNow.length) {
+    parts.push('<p class="muted rem-section">未到时间（仅浏览）</p>');
+    parts.push(later.map(reminderCardHtml).join(""));
+    if (done.length) {
+      parts.push('<p class="muted rem-section">最近完成</p>');
+      parts.push(done.map(reminderCardHtml).join(""));
+    }
+  } else {
+    parts.push(items.map(reminderCardHtml).join(""));
+  }
+
+  box.innerHTML = parts.join("");
+  bindReminderActions(box);
 }
 
 async function refreshList() {
@@ -512,6 +558,12 @@ $("btnNewReminder").onclick = () => {
   form.remind_before_days.value = 3;
   form.repeat.value = "once";
   $("reminderDialog").showModal();
+};
+
+$("btnToggleReminders").onclick = () => {
+  state.showAllReminders = !state.showAllReminders;
+  $("btnToggleReminders").textContent = state.showAllReminders ? "只看待提醒" : "查看全部";
+  renderReminderPanel();
 };
 $("search").oninput = debounce(refreshList, 250);
 $("filterCategory").onchange = refreshList;

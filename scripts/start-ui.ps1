@@ -30,5 +30,19 @@ $url = "http://127.0.0.1:$port"
 
 Write-Host "库路径: $env:KEYVAULT_PATH"
 Write-Host "打开界面: $url"
+
+# 网页已在跑则只开浏览器，不重复拉起（与 KeyVault-start.bat 一致）
+$alreadyUp = $false
+try {
+  $resp = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 2
+  if ($resp.StatusCode -ge 200 -and $resp.StatusCode -lt 500) { $alreadyUp = $true }
+} catch { $alreadyUp = $false }
+
 Start-Process $url
+if ($alreadyUp) {
+  Write-Host "网页服务已在运行，未重复启动。"
+  exit 0
+}
+
+if (-not (Test-Path ".\backups")) { New-Item -ItemType Directory -Path ".\backups" | Out-Null }
 & .\.venv\Scripts\python.exe -m keyvault.webapp

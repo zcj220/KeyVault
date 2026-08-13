@@ -58,7 +58,7 @@ def init_cmd(vault_path: str | None) -> None:
 
 
 @main.command("add")
-@click.option("--name", required=True, help="条目标题，需唯一，如 Cloudflare-域名解析")
+@click.option("--name", required=True, help="条目标题，需唯一，如 示例云-控制台")
 @click.option("--category", default="其他", show_default=True, help="分类，可自定义")
 @click.option("--kind", default="asset", show_default=True, help="asset/account/server/note/api/email...")
 @click.option("--summary", default="", help="这条整体干什么用")

@@ -63,8 +63,8 @@ async def api_bootstrap(_: Request) -> JSONResponse:
             "suggested_categories": SUGGESTED_CATEGORIES,
             "project_root": str(ROOT),
             "sync_hint": (
-                "当前默认使用 OneDrive\\KeyVault（本机已可用）。"
-                "若要用坚果云：先安装坚果云 Windows 客户端并登录，"
+                "默认建议把 vault.kvault 放在 OneDrive\\KeyVault。"
+                "若要用坚果云：先安装客户端并登录，"
                 "等 KeyVault 文件夹出现在本机后，在设置里改路径即可。"
             ),
         }
@@ -494,7 +494,7 @@ def main() -> None:
     apply_local_env()
     import uvicorn
 
-    port = int(os.environ.get("KEYVAULT_UI_PORT", "8787"))
+    port = int(os.environ.get("KEYVAULT_UI_PORT", "8799"))
     uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
 
 

@@ -71,7 +71,10 @@
         </div>
       </section>
       <aside class="col">
-        <div class="panel-title">提醒待办 <span id="dueBadge" class="badge">0</span></div>
+        <div class="panel-title">
+          提醒待办 <span id="dueBadge" class="badge">0</span>
+          <button id="btnToggleReminders" class="ghost rem-toggle" type="button" title="未到提前天数的提醒默认隐藏">查看全部</button>
+        </div>
         <div id="reminderPanel" class="reminders glass"></div>
       </aside>
     </main>
@@ -81,7 +84,7 @@
     <form method="dialog" id="editForm" class="panel glass dlg">
       <h2 id="editTitle">新建条目</h2>
       <label>名称</label>
-      <input name="name" required placeholder="如 Cloudflare-域名解析" />
+      <input name="name" required placeholder="如 示例云-控制台" />
       <label>分类</label>
       <input name="category" list="catList" />
       <datalist id="catList"></datalist>
@@ -105,7 +108,7 @@
     <form method="dialog" id="reminderForm" class="panel glass dlg">
       <h2>新建提醒</h2>
       <label>标题</label>
-      <input name="title" required placeholder="例如：续费 Cloudflare / 交社保" />
+      <input name="title" required placeholder="例如：续费云服务 / 交社保" />
       <label>下次到期日</label>
       <input name="due_at" type="date" required />
       <label>提醒周期</label>
