@@ -103,6 +103,7 @@ async function bootstrap() {
 
 async function enterApp(status) {
   state.unlocked = true;
+  document.body.classList.add("app-active");
   $("gate").classList.add("hidden");
   $("app").classList.remove("hidden");
   $("pathLabel").textContent = status.vault_path || "";

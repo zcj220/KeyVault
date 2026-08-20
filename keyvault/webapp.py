@@ -50,7 +50,11 @@ def _store_from_session(request: Request) -> VaultStore:
 
 
 async def index(_: Request) -> FileResponse:
-    return FileResponse(WEB_DIR / "index.html", media_type="text/html; charset=utf-8")
+    return FileResponse(
+        WEB_DIR / "index.html",
+        media_type="text/html; charset=utf-8",
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 async def api_bootstrap(_: Request) -> JSONResponse:
