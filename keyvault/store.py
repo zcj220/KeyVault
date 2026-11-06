@@ -354,7 +354,32 @@ class VaultStore:
         out.sort(key=lambda c: c.expires_at or "9999-99-99")
         return out
 
+    def catch_up_repeating_reminders(self) -> int:
+        """周期提醒若已过到期日，滚到下一次还没过期的到期日。过掉的那一期不再提醒。"""
+        data = self.load()
+        today = date.today()
+        changed = 0
+        for reminder in data.reminders:
+            if reminder.done or reminder.repeat == "once":
+                continue
+            rolled = False
+            guard = 0
+            while reminder.days_until_due(today) < 0 and guard < 48:
+                nxt = reminder.next_due_after()
+                if not nxt:
+                    break
+                reminder.due_at = nxt
+                rolled = True
+                guard += 1
+            if rolled:
+                reminder.updated_at = utc_now_iso()
+                changed += 1
+        if changed:
+            self.save()
+        return changed
+
     def list_reminders(self, include_done: bool = False) -> list[Reminder]:
+        self.catch_up_repeating_reminders()
         items = list(self.load().reminders)
         if not include_done:
             items = [r for r in items if not r.done]
@@ -362,7 +387,7 @@ class VaultStore:
         return items
 
     def due_reminders(self) -> list[Reminder]:
-        """需要提醒的：未完成，且已到提前天数窗口（含过期）。"""
+        """需要提醒的：未完成，且落在到期前 N 天窗口内（含到期当天，不含已过期）。"""
         items = [r for r in self.list_reminders(include_done=False) if r.should_alert()]
         items.sort(key=lambda r: (r.days_until_due(), r.due_at))
         return items

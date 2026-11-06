@@ -53,7 +53,7 @@ def _with_expiry_warning(view: dict[str, Any]) -> dict[str, Any]:
 
 @mcp.tool()
 def vault_status() -> str:
-    """查看记忆库状态。会话开始时优先调用：会返回需要提醒的待办（到期前 N 天/已过期）。"""
+    """查看记忆库状态。会话开始时优先调用：只返回到期前 N 天内的待办。已过期的不再提醒。"""
     try:
         store = _store()
         # 先按磁盘最新文件加载（网盘同步后也能看到另一台电脑的修改）
@@ -73,7 +73,7 @@ def vault_status() -> str:
                 "reminders_due": [r.public_view() for r in due],
                 "reminders_due_count": len(due),
                 "alert": (
-                    f"有 {len(due)} 条待办需要关注（含到期前提醒/已过期）"
+                    f"有 {len(due)} 条待办需要关注（仅到期前窗口内，已过期的不提醒）"
                     if due
                     else "当前没有需要提醒的待办"
                 ),
@@ -394,7 +394,7 @@ def restore_entry(name_or_id: str) -> str:
 
 @mcp.tool()
 def list_reminders(include_done: bool = False, only_due: bool = False) -> str:
-    """列出提醒待办。only_due=true 时只返回需要立刻提醒的（默认提前 3 天窗口内/已过期）。"""
+    """列出提醒待办。only_due=true 时只返回到期前窗口内的（默认提前 3 天，含到期当天）。已过期的不返回。"""
     try:
         store = _store()
         items = store.due_reminders() if only_due else store.list_reminders(include_done=include_done)

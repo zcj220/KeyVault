@@ -300,7 +300,7 @@ Credential = Entry
 
 @dataclass
 class Reminder:
-    """待办提醒：到期前 N 天提醒；可设一次/每周/每月/每季度/每年。"""
+    """待办提醒：只在到期前 N 天内提醒；过了到期日不再提醒。可设一次/每周/每月/每季度/每年。"""
 
     title: str
     due_at: str  # YYYY-MM-DD（下一次到期日）
@@ -346,10 +346,11 @@ class Reminder:
         return (date.fromisoformat(self.due_at) - today).days
 
     def should_alert(self, today: date | None = None) -> bool:
+        """仅到期当天及提前 N 天内提醒。过期（days < 0）不再提醒。"""
         if self.done:
             return False
         days = self.days_until_due(today)
-        return days <= self.remind_before_days
+        return 0 <= days <= self.remind_before_days
 
     def alert_level(self) -> str:
         if self.done:
