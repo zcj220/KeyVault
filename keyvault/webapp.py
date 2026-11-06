@@ -26,6 +26,7 @@ from keyvault.models import SUGGESTED_CATEGORIES, Entry, parse_expiry
 from keyvault.store import VaultError, VaultStore
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
+MOBILE_DIR = Path(__file__).resolve().parent.parent / "mobile"
 SECRET_FILE = ROOT / ".web_secret"
 
 
@@ -479,6 +480,7 @@ routes = [
     Route("/api/reminders/{id_or_title}/complete", api_reminders_complete, methods=["POST"]),
     Route("/api/reminders/{id_or_title}", api_reminders_delete, methods=["DELETE"]),
     Mount("/static", app=StaticFiles(directory=str(WEB_DIR)), name="static"),
+    Mount("/phone", app=StaticFiles(directory=str(MOBILE_DIR), html=True), name="phone"),
 ]
 
 middleware = [

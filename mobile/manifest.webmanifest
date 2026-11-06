@@ -1,0 +1,9 @@
+{
+  "name": "芯造记忆库",
+  "short_name": "记忆库",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f3faf6",
+  "theme_color": "#f3faf6",
+  "lang": "zh-CN"
+}
